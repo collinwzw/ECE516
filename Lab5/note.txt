@@ -1,0 +1,25 @@
+Here's some useful materials for access to audio, sound, etc.:
+
+py.zip is a zip with 3 source files for using sounddevice library to access audio ports in python.
+
+play_sine.py plays a sine wave of arbitrary frequency on your selected device.
+
+plot_input.py plots the input to the microphone on a matplotlib window, i.e. a waveform plotter for your microphone.
+
+demo.py is a file for combining the two above functions together.
+
+MATLAB has a Simulink implementation here:
+https://www.mathworks.com/help/audio/ug/read-from-microphone-and-write-to-speaker.html
+
+
+Materials from previous years:
+
+Rotary SWIMulator (SWIM simulator in polar coordinates), "single_polar_view.py" could be modified to do lab 5.
+It receives audio from the microphone and plots it in a circular plot.
+Modify the number of plotted points so that an incoming signal is stationary on the SWIMulator.
+You can do this by matching the plotted points to be a multiple of the period of an incoming signal.
+Once it's stationary you should see the whole plot rotate when you move the phone back and forth.
+You could do this with only a little bit of modification of "single_polar_view.py"
+
+One of the students did a smartphone version of the lab:
+AndroidSWIM-master.zip
