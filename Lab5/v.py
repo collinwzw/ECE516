@@ -68,24 +68,23 @@ ax.get_xaxis().set_visible(False)
 ax.get_yaxis().set_visible(False)
 ax.set_facecolor("black")
 xdata, ydata = [], []
-ln, = plt.plot([], [], 'go')
+ln, = plt.plot([], [], 'go',markersize=20)
 
-order = 5
+order = 1
 
-sampling_freq = 5000
+sampling_freq = 44100
 
-cutoff_freq = 2
+cutoff_freq = 50
 
-sampling_duration = 5
-
+sampling_duration = 0.01
 number_of_samples = sampling_freq * sampling_duration
 normalized_cutoff_freq = 2 * cutoff_freq / sampling_freq
-numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq)
+numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq,btype='lowpass')
 
 
 def init():
     ax.set_xlim(0, 2*np.pi)
-    ax.set_ylim(-0.1**-17, 0.1**-17)
+    ax.set_ylim(-1e-4, 1e-4)
     return ln,
 
 def update(frame):
@@ -93,6 +92,15 @@ def update(frame):
     while True:
         try:
             data = q.get_nowait()
+            data = np.average(data)
+
+            # max = np.amax(data)
+            # min = np.amin(data)
+            # if abs(max) < abs(min):
+            #     data = min
+            # else:
+            #     data = max
+
             print(data)
             ln.set_data(2, data)
         except queue.Empty:
@@ -116,7 +124,7 @@ try:
         t = (start_idx + np.arange(frames)) / args.samplerate
         t = t.reshape(-1, 1)
         #print(len(indata[::1, mapping]))
-        outdata[:] = 0.5 * np.sin(2 * np.pi * 500 * t)
+        outdata[:] = 0.5 * np.cos(44100 * t)
         start_idx += frames
 
         # Plot the received microphone input
