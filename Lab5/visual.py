@@ -12,14 +12,15 @@ ln, = plt.plot([], [], 'go')
 
 def init():
     ax.set_xlim(0, 2*np.pi)
-    ax.set_ylim(-1, 1)
+    ax.set_ylim(-5, 20)
     return ln,
 
-def update(frame):
-    xdata.append(frame)
-    ln.set_data(2, np.sin(frame))
+def update(data):
+    ln.set_data(2, data)
     return ln,
 
-ani = FuncAnimation(fig, update, frames=np.linspace(0, 2*np.pi, 128),
+for i in range(0,20):
+
+    ani = FuncAnimation(fig, update, frames=i,
                     init_func=init, blit=True)
 plt.show()

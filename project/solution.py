@@ -10,7 +10,8 @@ import time as tl
 from datetime import datetime
 import sounddevice as sd
 import numpy as np  # Make sure NumPy is loaded before it is used in the callback
-from scipy.signal import butter, lfilter, freqz
+from scipy.signal import butter, lfilter, freqz, square
+import math
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
 import scipy
@@ -61,19 +62,37 @@ q = queue.Queue()
 i=0
 #Indexing variable for generating the sine wave sound
 start_idx = 0
+high = True
+
+fig, ax = plt.subplots()
+fig.set_facecolor('black')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+ax.set_facecolor("black")
+xdata, ydata = [], []
+ln, = plt.plot([], [], 'go',markersize=20)
+
+
 order = 10
-starting_time = 0
-endtime = 0
 
 sampling_freq = 44100
 
 cutoff_freq = 50
 
-sampling_duration = 1
-avg = []
+sampling_duration = 1/sampling_freq
 number_of_samples = sampling_freq * sampling_duration
 normalized_cutoff_freq = 2 * cutoff_freq / sampling_freq
 numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq,btype='lowpass')
+
+
+def init():
+    order_display = 4
+    ax.set_xlim(-5e-29, 5e-29
+
+                )
+    ax.set_ylim(-5e-29, 5e-29)
+    return ln,
+
 def Average(lst):
     return sum(lst) / len(lst)
 def update_plot(frame):
@@ -88,44 +107,55 @@ def update_plot(frame):
     while True:
         try:
             data = q.get_nowait()
-            data = np.amax(data)
-            #print(data)
-            if len(avg)>= 10 and data > 10 * Average(avg):
-                endtime = tl.time()
-                print("different frequency detected")
-                print("time difference = " + str(endtime - starting_time) )
-            else:
-                avg.append(data)
+            # data = np.amax(data)
+            # #print(data)
+            # if len(avg)>= 10 and data > 10 * Average(avg):
+            #     endtime = tl.time()
+            #     print("different frequency detected")
+            #     print("time difference = " + str(endtime - starting_time) )
+            # else:
+            #     avg.append(data)
 
 
         except queue.Empty:
             break
         #data = np.average(data)
-        shift = 1
-        plotdata = np.roll(plotdata, -shift, axis=0)
-        plotdata[-shift:] = data
-    for column, line in enumerate(lines):
-        line.set_ydata(plotdata[:, column])
-    return lines
+        print(data)
+        # shift = 1
+        # plotdata = np.roll(plotdata, -shift, axis=0)
+        # plotdata[-shift:] = data
+        ln.set_data(data[0], data[1])
+    # for column, line in enumerate(lines):
+    #     line.set_ydata(plotdata[:, column])
+    return ln,
+
+# def update_plot(frame):
+#     """This is called by matplotlib for each plot update.
+#
+#     Typically, audio callbacks happen more frequently than plot updates,
+#     therefore the queue tends to contain multiple blocks of audio data.
+#
+#     """
+#     global plotdata
+#     while True:
+#         try:
+#             data = q.get_nowait()
+#         except queue.Empty:
+#             break
+#         shift = len(data)
+#         plotdata = np.roll(plotdata, -shift, axis=0)
+#         plotdata[-shift:] = data
+#     for column, line in enumerate(lines):
+#         line.set_ydata(plotdata[:, column])
+#     return lines
 
 try:
     length = int(200 * args.samplerate / (1000 * 10))
     plotdata = np.zeros((length, len(args.channels)))
 
-    fig, ax = plt.subplots()
-    lines = ax.plot(plotdata)
-    if len(args.channels) > 1:
-        ax.legend(['channel {}'.format(c) for c in args.channels],
-                  loc='lower left', ncol=len(args.channels))
-    ax.axis((0, len(plotdata), -1e-2, 1e-2))
-    ax.set_yticks([0])
-    ax.yaxis.grid(True)
-    ax.tick_params(bottom=False, top=False, labelbottom=False,
-                   right=False, left=False, labelleft=False)
-    fig.tight_layout(pad=0)
 
     def callback(indata, outdata, frames, time, status):
-        global i, starting_time
+        global i, starting_time, high
         if status:
             print(status)
         global start_idx
@@ -134,21 +164,42 @@ try:
         t = (start_idx + np.arange(frames)) /  args.samplerate
         t = t.reshape(-1, 1)
         #outdata[:] = np.sin(0)
-        if i == 100:
-            outdata[:] = np.cos(44100 * t)
-            starting_time = tl.time()
+        high_f = 1000
+        low_f = 400
+        if high:
+            f = high_f
+            high = False
         else:
-            outdata[:] = np.cos(1000 * t)
+            f = low_f
+            high = True
+
+        outdata[:] = square( 2 * math.pi * f * t)
+       # t_shifted = t + 1/10 * 0.25
+        T = 1/f
+        t_shifted = (1/4) * T  + t
+        #t_shifted = (start_idx + + 1/10 * 0.5 + np.arange(frames)) /  args.samplerate
+
+        #t_shifted = t_shifted.reshape(-1, 1)
+        shift_data = square(2 * math.pi * f * t_shifted)
+            #starting_time = tl.time()
+
+            #outdata[:] = square(400 * t)
         i=i+1
         start_idx += frames
-        filtered_signal = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, outdata * indata[::1, mapping])
+        filtered_signal_x = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, outdata * indata[::1, mapping])
+        filtered_signal_y = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, shift_data * indata[::1, mapping])
+        filtered_signal_x = np.average(filtered_signal_x)
+        filtered_signal_y = np.average(filtered_signal_y)
+
         #print(starting_time)
         #Plot the received microphone input
-        q.put(indata[::1,mapping])
+        q.put((filtered_signal_x,filtered_signal_y))
 
+
+        #q.put(outdata + shift_data)
         
 
-    ani = FuncAnimation(fig, update_plot, interval=args.interval, blit=True)
+    ani = FuncAnimation(fig, update_plot, interval=args.interval,init_func=init, blit=True)
 
     with sd.Stream(device=(args.input_device, args.output_device),
                    samplerate=args.samplerate, blocksize=args.blocksize,
