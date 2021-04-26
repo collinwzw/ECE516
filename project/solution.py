@@ -10,7 +10,7 @@ import time as tl
 from datetime import datetime
 import sounddevice as sd
 import numpy as np  # Make sure NumPy is loaded before it is used in the callback
-from scipy.signal import butter, lfilter, freqz, square
+from scipy.signal import *
 import math
 from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
@@ -84,6 +84,30 @@ number_of_samples = sampling_freq * sampling_duration
 normalized_cutoff_freq = 2 * cutoff_freq / sampling_freq
 numerator_coeffs, denominator_coeffs = scipy.signal.butter(order, normalized_cutoff_freq,btype='lowpass')
 
+def lowpass_filter(signal, fs, limit=40,
+                   passband_ripple=3.0, stopband_att=60.0):
+    """ Filter signal using a low pass Butterworth filter. <fs> sampling rate of
+        the <signal>.
+        === Params ====
+        Limit - is the lower bound of the filter in Hz
+        passband_ripple - pass band attenuation
+        stopband_att - stop band attenuation
+    """
+    nyq_limit = 0.5 * fs
+    lowpass_cutoff = 40 / nyq_limit
+
+
+    # Calculate the correct order of the filter
+    order, wn = buttord(lowpass_cutoff, 0.05 + lowpass_cutoff,
+                        gpass=passband_ripple,
+                        gstop=stopband_att)
+
+    sos = butter(order, wn,
+                  btype='lowpass',
+                  output='sos')
+
+    filtered_signal = sosfilt(sos, signal)
+    return filtered_signal
 
 def init():
     order_display = 4
@@ -186,8 +210,10 @@ try:
             #outdata[:] = square(400 * t)
         i=i+1
         start_idx += frames
-        filtered_signal_x = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, outdata * indata[::1, mapping])
-        filtered_signal_y = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, shift_data * indata[::1, mapping])
+        #filtered_signal_x = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, outdata * indata[::1, mapping])
+        #filtered_signal_y = scipy.signal.lfilter(numerator_coeffs, denominator_coeffs, shift_data * indata[::1, mapping])
+        filtered_signal_x = lowpass_filter(outdata * indata[::1, mapping])
+        filtered_signal_y = lowpass_filter(shift_data * indata[::1, mapping])
         filtered_signal_x = np.average(filtered_signal_x)
         filtered_signal_y = np.average(filtered_signal_y)
 
@@ -197,7 +223,7 @@ try:
 
 
         #q.put(outdata + shift_data)
-        
+
 
     ani = FuncAnimation(fig, update_plot, interval=args.interval,init_func=init, blit=True)
 
